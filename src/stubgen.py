@@ -629,6 +629,36 @@ class StubGen:
         def process_ndarray(m: Match[str]) -> str:
             s = m.group(2)
 
+            # wk
+            if m.group(1) == 'numpy.ndarray':
+                self.import_object("numpy", None)
+                any = self.import_object("typing", "Any")
+                lit = self.import_object("typing", "Literal")
+                if dtm := re.search(r"dtype=([\w]*)\b", s):
+                    if dtn := re.search(r"((?:complex|int|uint|float)(?:[0-9]+)|bool)\b", dtm.group(1)):
+                        dt = f"numpy.dtype[numpy.{dtn.group(1)}]"
+                    else:
+                        dt = f"numpy.dtype[{dtm.group(1)}]"
+                else:
+                    dt = any
+                if shapem := re.search(r"shape=\(([^)]+)\)", s):
+                    dims: list[str] = []
+                    for el in shapem.group(1).split(','):
+                        el = el.strip()
+                        if el == '*':
+                            dims.append(any)
+                        else:
+                            try:
+                                num = int(el)
+                            except ValueError:
+                                dims.append(el)
+                            else:
+                                dims.append(f'{lit}[{num}]')
+                    shape = f"tuple[{', '.join(dims)}]"
+                else:
+                    shape = any
+                return f"numpy.ndarray[{shape}, {dt}]"
+
             ndarray = self.import_object("numpy.typing", "ArrayLike")
             assert ndarray
             s = re.sub(r"dtype=([\w]*)\b", r"dtype='\g<1>'", s)
