@@ -661,7 +661,7 @@ class StubGen:
 
             ndarray = self.import_object("numpy.typing", "ArrayLike")
             assert ndarray
-            s = re.sub(r"dtype=([\w]*)\b", r"dtype='\g<1>'", s)
+            s = re.sub(r"dtype=([\w.]*)\b", r"dtype='\g<1>'", s)
             s = s.replace("*", "None")
 
             if s:
