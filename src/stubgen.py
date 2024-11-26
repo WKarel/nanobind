@@ -626,15 +626,15 @@ class StubGen:
         """
 
         # Process nd-array type annotations so that MyPy accepts them
-        def process_ndarray(m: Match[str]) -> str:
+        def process_ndarray(m: Match[str], isArg: bool) -> str:
             s = m.group(2)
 
             # wk
-            if m.group(1) == 'numpy.ndarray':
+            if not isArg and m.group(1) == 'numpy.ndarray':
                 self.import_object("numpy", None)
                 any = self.import_object("typing", "Any")
                 lit = self.import_object("typing", "Literal")
-                if dtm := re.search(r"dtype=([\w]*)\b", s):
+                if dtm := re.search(r"dtype=([\w.]*)\b", s):
                     if dtn := re.search(r"((?:complex|int|uint|float)(?:[0-9]+)|bool)\b", dtm.group(1)):
                         dt = f"numpy.dtype[numpy.{dtn.group(1)}]"
                     else:
@@ -670,7 +670,12 @@ class StubGen:
             else:
                 return ndarray
 
-        s = self.ndarray_re.sub(process_ndarray, s)
+        parts = s.split('->', maxsplit=2)
+        results: list[str] = []
+        for isArg, part in zip((True, False), parts):
+            results.append(self.ndarray_re.sub(lambda m: process_ndarray(m, isArg), part))
+        s = '->'.join(results)
+
 
         if sys.version_info >= (3, 9, 0):
             s = self.abc_re.sub(r'collections.abc.\1', s)
