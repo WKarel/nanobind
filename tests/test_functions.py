@@ -253,6 +253,18 @@ def test21_numpy_overloads():
     assert t.test_11_sll(np.int32(5)) == 5
     assert t.test_11_ull(np.int32(5)) == 5
 
+    with pytest.raises(TypeError) as excinfo:
+        t.test_21_dnc(np.float64(21.0))  # Python type is not exactly float
+    assert "incompatible function arguments" in str(excinfo.value)
+    assert t.test_21_dnc(float(np.float64(21.0))) == 22.0
+    assert t.test_21_dnc(float(np.float32(21.0))) == 22.0
+
+    assert t.test_21_fnc(float(np.float32(21.0))) == 22.0
+    with pytest.raises(TypeError) as excinfo:
+        t.test_21_fnc(float(np.float64(21.1)))  # Inexact narrowing to float32
+    assert "incompatible function arguments" in str(excinfo.value)
+    assert t.test_21_fnc(float(np.float32(21.1))) == np.float32(22.1)
+
 
 def test22_string_return():
     assert t.test_12("hello") == "hello"
@@ -280,6 +292,13 @@ def test25_int():
     assert t.test_19(5) == 128
     assert t.test_20("5") == 128
     assert t.test_21(5) == 5
+    assert t.test_21_f(5.1) == int(5.1)
+    assert t.test_21_f(1e50) == int(1e50)
+    assert type(t.test_21_f(0.5)) is int
+    assert t.test_21_g() == int(1.5)
+    assert type(t.test_21_g()) is int
+    assert t.test_21_h() == int(1e50)
+    assert type(t.test_21_h()) is int
     assert t.test_19.__doc__ == "test_19(arg: int, /) -> object"
 
 
@@ -725,3 +744,9 @@ def test50_call_policy():
         case("swapfrom", "xxx", "<unfinished>")
     with pytest.raises(RuntimeError, match="offset too large"):
         case("swapfrom", "10", "<unfinished>")
+
+def test51_isinstance():
+    assert t.isinstance_(3, int)
+    assert not t.isinstance_(3, bool)
+    with pytest.raises(TypeError):
+        t.isinstance_(3, 7)

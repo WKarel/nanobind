@@ -15,18 +15,49 @@ case, both modules must use the same nanobind ABI version, or they will be
 isolated from each other. Releases that don't explicitly mention an ABI version
 below inherit that of the preceding release.
 
-Version TBD (unreleased)
-------------------------
+Version TBD (not yet released)
+------------------------------
 
-- The ``std::variant`` type_caster now does two passes when converting from Python.
-  The first pass is done without implicit conversions. This fixes an issue where
-  ``std::variant<U, T>`` might cast a Python object wrapping a ``T`` to a ``U`` if
-  there is an implicit conversion available from ``T`` to ``U``.
+- Added some special forms for :cpp:class:`nb::typed\<T, Ts...\> <typed>`
+  (PR `#835 <https://github.com/wjakob/nanobind/pull/835>`__):
 
-- Restored support for constructing types with an overloaded ``__new__`` that
-  takes no arguments, which regressed with the constructor vectorcall
-  acceleration that was added in nanobind 2.2.0.
-  (issue `#786 <https://github.com/wjakob/nanobind/issues/786>`__)
+  - ``nb::typed<nb::object, T>`` or ``nb::typed<nb::handle, T>`` produces
+    a parameter or return value that will be described like ``T`` in function
+    signatures but accepts any Python object at runtime.
+
+  - ``nb::typed<nb::callable, R(Args...)>`` produces a Python callable signature
+    ``Callable[[Args...], R]``; similarly, ``nb::typed<nb::callable, R(...)>``
+    (with a literal ellipsis) produces the Python ``Callable[..., R]``.
+
+- Fixed the :cpp:class:`nb::int_ <int_>` constructor so that it casts to
+  an integer when invoked with a floating point argument.
+
+- Fixed (benign) reference leads that could occur when ``std::shared_ptr<T>``
+  instances were still alive at interpreter shutdown time. (commit `fb8157
+  <https://github.com/wjakob/nanobind/commit/fb815762fdb8476cfd293e3717ca41c8bb890437>`__).
+
+- Fixed a race condition in free-threaded extensions that could occur when
+  :cpp:func:`nb::make_iterator <make_iterator>` was concurrently used by
+  multiple threads (PR `#832 <https://github.com/wjakob/nanobind/pull/832>`__).
+
+- Removed double-checked locking patterns in accesses to internal data
+  structures to ensure correct free-threaded behavior on architectures with
+  weak memory ordering such as ARM (PR `#819
+  <https://github.com/wjakob/nanobind/pull/819>`__).
+
+- The floating-point type caster now only performs value-changing narrowing
+  conversions during the implicit conversion phase. They can be entirely
+  avoided by passing the :cpp:func:`.noconvert() <arg::noconvert>` argument
+  annotation (PR `#829 <https://github.com/wjakob/nanobind/pull/829>`__).
+
+- Fixed an overly strict check that could cause a function taking an
+  :cpp:class:`nb::ndarray\<...\> <ndarray>` to refuse specific types of
+  column-major input without implicit conversion. (PR `#847
+  <https://github.com/wjakob/nanobind/pull/847>`__, commit `b95eb7
+  <https://github.com/wjakob/nanobind/commit/b95eb755b5a651a40562002be9ca8a4c6bf0acb9>`__).
+
+Version 2.4.0 (Dec 6, 2024)
+---------------------------
 
 - Added a function annotation :cpp:class:`nb::call_policy\<Policy\>()
   <call_policy>` which supports custom function wrapping logic,
@@ -38,10 +69,48 @@ Version TBD (unreleased)
   documentation for more details, important caveats, and an example policy.
   (PR `#767 <https://github.com/wjakob/nanobind/pull/767>`__)
 
-- :cpp:func:`make_iterator` now accepts its iterator arguments by value,
-  rather than by forwarding reference, in order to eliminate the hazard
-  of storing a dangling C++ iterator reference in the returned Python
-  iterator object. (PR `#788 <https://github.com/wjakob/nanobind/pull/788>`__)
+- :cpp:func:`nb::make_iterator <make_iterator>` now accepts its iterator
+  arguments by value, rather than by forwarding reference, in order to
+  eliminate the hazard of storing a dangling C++ iterator reference in the
+  returned Python iterator object. (PR `#788
+  <https://github.com/wjakob/nanobind/pull/788>`__)
+
+- The ``std::variant`` type_caster now does two passes when converting from Python.
+  The first pass is done without implicit conversions. This fixes an issue where
+  ``std::variant<U, T>`` might cast a Python object wrapping a ``T`` to a ``U`` if
+  there is an implicit conversion available from ``T`` to ``U``.
+  (issue `#769 <https://github.com/wjakob/nanobind/issues/769>`__)
+
+- Restored support for constructing types with an overloaded ``__new__`` that
+  takes no arguments, which regressed with the constructor vector call
+  acceleration that was added in nanobind 2.2.0.
+  (issue `#786 <https://github.com/wjakob/nanobind/issues/786>`__)
+
+- Bindings for augmented assignment operators (as generated, for example, by
+  ``.def(nb::self += nb::self)``) now return the same object in Python in the
+  typical case where the C++ operator returns a reference to ``*this``.
+  Previously, after ``a += b``, ``a`` would be replaced with a copy.
+  (PR `#803 <https://github.com/wjakob/nanobind/pull/803>`__)
+
+- Added an overload to :cpp:func:`nb::isinstance <isinstance>` which tests if a
+  Python object is an instance of a Python class. This is in addition to the
+  existing overload, which tests if a Python object is an instance of a bound
+  C++ class. (PR `#805 <https://github.com/wjakob/nanobind/pull/805>`__).
+
+- Added support for overriding static properties, such as those defined using
+  ``def_prop_ro_static``, in subclasses. Previously this would fail with an
+  error. (PR `#806 <https://github.com/wjakob/nanobind/pull/806>`__).
+
+- Other minor fixes and improvements. (PRs `#771
+  <https://github.com/wjakob/nanobind/pull/771>`__, `#772
+  <https://github.com/wjakob/nanobind/pull/772>`__, `#748
+  <https://github.com/wjakob/nanobind/pull/748>`__, and `#753
+  <https://github.com/wjakob/nanobind/pull/753>`__)
+
+Version 2.3.0
+-------------
+
+There is no version 2.3.0 due to a deployment mishap.
 
 Version 2.2.0 (October 3, 2024)
 -------------------------------

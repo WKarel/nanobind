@@ -325,7 +325,9 @@ def test14_operators():
         assert repr(a - b) == "3"
     assert "unsupported operand type" in str(excinfo.value)
     assert repr(a - 2) == "-1"
+    a_before = id(a)
     a += b
+    assert id(a) == a_before
     assert repr(a) == "3"
     assert repr(b) == "2"
 
@@ -914,3 +916,7 @@ def test48_monekypatchable():
     t.MonkeyPatchable.__init__ = my_init
     q = t.MonkeyPatchable()
     assert q.value == 456
+
+def test49_static_property_override():
+    assert t.StaticPropertyOverride.x == 42
+    assert t.StaticPropertyOverride2.x == 43

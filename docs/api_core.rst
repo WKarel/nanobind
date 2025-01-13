@@ -635,6 +635,10 @@ Type queries
    to convert the object to C++. It may be more efficient to just perform the
    conversion using :cpp:func:`cast` and catch potential raised exceptions.
 
+.. cpp:function:: isinstance(handle inst, handle cls)
+
+   Checks if the Python object `inst` is an instance of the Python type `cls`.
+
 .. cpp:function:: template <typename T> handle type() noexcept
 
    Returns the Python type object associated with the C++ type `T`. When the
@@ -3095,7 +3099,8 @@ Miscellaneous
     from the signature. To make this explicit, use the ``nb::typed<T, Ts...>``
     wrapper to pass additional type parameters. This has no effect besides
     clarifying the signature---in particular, nanobind does *not* insert
-    additional runtime checks!
+    additional runtime checks! At runtime, a ``nb::typed<T, Ts...>`` behaves
+    exactly like a ``T``.
 
     .. code-block:: cpp
 
@@ -3104,3 +3109,21 @@ Miscellaneous
                // ...
            }
        });
+
+    ``nb::typed<nb::object, T>`` and ``nb::typed<nb::handle, T>`` are
+    treated specially: they generate a signature that refers just to ``T``,
+    rather than to the nonsensical ``object[T]`` that would otherwise
+    be produced. This can be useful if you want to replace the type of
+    a parameter instead of augmenting it. Note that at runtime these
+    perform no checks at all, since ``nb::object`` and ``nb::handle``
+    can refer to any Python object.
+
+    To support callable types, you can specify a C++ function signature in
+    ``nb::typed<nb::callable, Sig>`` and nanobind will attempt to convert
+    it to a Python callable signature.
+    ``nb::typed<nb::callable, int(float, std::string)>`` becomes
+    ``Callable[[float, str], int]``, while
+    ``nb::typed<nb::callable, int(...)>`` becomes ``Callable[..., int]``.
+    Type checkers will verify that any callable passed for such an argument
+    has a compatible signature. (At runtime, any sort of callable object
+    will be accepted.)
