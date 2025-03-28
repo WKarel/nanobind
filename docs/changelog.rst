@@ -15,8 +15,8 @@ case, both modules must use the same nanobind ABI version, or they will be
 isolated from each other. Releases that don't explicitly mention an ABI version
 below inherit that of the preceding release.
 
-Upcoming version (TBA)
-----------------------
+Version 2.6.1 (Mar 28, 2025)
+----------------------------
 
 - nanobind assigns an ABI tag to compiled extensions and uses it to isolate
   incompatible extensions from each other. This tag was unnecessarily
@@ -25,8 +25,29 @@ Upcoming version (TBA)
   long-standing inconvenience. (PR `#778
   <https://github.com/wjakob/nanobind/pull/778>`__).
 
+- Added specialized function dispatchers to accelerate calls to 0 and
+  1-argument functions. (PR `#944
+  <https://github.com/wjakob/nanobind/pull/944>`__).
+
+- Improved the efficiency of :cpp:func:`nb::getattr(obj, key,
+  default) <getattr>` in cases where ``obj[key]`` does exist. (commit
+  `bb05f5
+  <https://github.com/wjakob/nanobind/commit/bb05f5503aef9b70498302bf30bf958e8cc605c7>`__).
+
 * ABI version 16.
 
+* Miscellaneous fixes and improvements (PRs `#913
+  <https://github.com/wjakob/nanobind/pull/913>`__, `#914
+  <https://github.com/wjakob/nanobind/pull/914>`__, `#916
+  <https://github.com/wjakob/nanobind/pull/916>`__, `#931
+  <https://github.com/wjakob/nanobind/pull/931>`__, `#978
+  <https://github.com/wjakob/nanobind/pull/978>`__, commit `1595d2
+  <https://github.com/wjakob/nanobind/commit/1595d2d40717d65835ed984b06cfc2b4da0e4858>`__).
+
+Version 2.6.0 (Mar 28, 2025)
+----------------------------
+
+- This release was yanked due to a regression.
 
 Version 2.5.0 (Feb 2, 2025)
 ---------------------------
@@ -62,7 +83,7 @@ Version 2.5.0 (Feb 2, 2025)
 - Fixed the :cpp:class:`nb::int_ <int_>` constructor so that it casts to
   an integer when invoked with a floating point argument.
 
-- Multi-level inheritance (e.g., `A → B → C`) previously did not work on Python
+- Multi-level inheritance (e.g., ``A → B → C``) previously did not work on Python
   3.12+ when a base class (e.g., ``A``) provided a trampoline implementation.
   This is now fixed. (commit `92d9cb
   <https://github.com/wjakob/nanobind/commit/92d9cb3d62b743a9eca2d9d9d8e5fb14a1e00a2a>`__).
@@ -73,7 +94,7 @@ Version 2.5.0 (Feb 2, 2025)
   `SYSTEM <https://cmake.org/cmake/help/latest/command/include_directories.html>`__
   include directories, which suppresses any potential warning messages
   originating there. This is mainly of relevance for projects that artificially
-  raise the warning level using flags like `-pedantic`, ``-Wcast-qual``,
+  raise the warning level using flags like ``-pedantic``, ``-Wcast-qual``,
   ``-Wsign-conversion``. (PR `#868
   <https://github.com/wjakob/nanobind/pull/868>`__).
 
@@ -1433,7 +1454,7 @@ Version 0.0.5 (May 13, 2022)
 ----------------------------
 
 * Enumeration export.
-* Implicit number conversion for numpy scalars.
+* Implicit number conversion for NumPy scalars.
 * Various minor fixes and improvements.
 
 Version 0.0.4 (May 13, 2022)
