@@ -762,6 +762,36 @@ class StubGen:
         # Turn shape notation into a valid Python type expression
         annotation = annotation.replace("*", "None").replace("(None)", "(None,)")
 
+        # wk
+        npndarray = self.import_object("numpy", "ndarray")
+        npdtype = self.import_object("numpy", "dtype")
+        any = self.import_object("typing", "Any")
+        lit = self.import_object("typing", "Literal")
+        if dtype is None:
+            dtype = any
+        else:
+            dtype = f"{npdtype}[{dtype}]"
+        if shapem := re.search(r"shape=\(([^)]+)\)", annotation):
+            dims: list[str] = []
+            for el in shapem.group(1).split(','):
+                el = el.strip()
+                if el:
+                    if el == 'None':
+                        dims.append(any)
+                    else:
+                        try:
+                            num = int(el)
+                        except ValueError:
+                            # E.g. 'R', a type parameter.
+                            dims.append(el)
+                        else:
+                            dims.append(f'{lit}[{num}]')
+            shape = f"tuple[{', '.join(dims)}]"
+        else:
+            shape = any
+        return f"{npndarray}[{shape}, {dtype}]"
+        # wk end
+
         # Build type while potentially preserving extra information as an annotation
         ndarray = self.import_object("numpy.typing", "NDArray")
         result = f"{ndarray}[{dtype}]" if dtype else ndarray
