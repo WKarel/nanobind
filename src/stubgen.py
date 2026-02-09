@@ -755,7 +755,13 @@ class StubGen:
         m = re.search(r"dtype=(\w+)", annotation)
 
         if m:
-            dtype = "numpy."+ m.group(1)
+            # wk
+            # dtype = "numpy."+ m.group(1)
+            dtype = m.group(1)
+            if len(dtype) > 1:  # Leave single-character type parameters unchanged.
+                dtype = "numpy." + dtype
+            # wk end
+
             dtype = dtype.replace('bool', 'bool_')
             annotation = re.sub(r"dtype=\w+,?\s*", "", annotation).rstrip(", ")
 
