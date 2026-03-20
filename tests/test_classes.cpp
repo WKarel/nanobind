@@ -130,7 +130,7 @@ struct UniqueInt {
 };
 std::map<int, std::weak_ptr<UniqueInt>> UniqueInt::instances;
 
-struct DefVisitor : def_visitor<DefVisitor> {
+struct DefVisitor : nb::def_visitor<DefVisitor> {
   int mem;
 };
 
