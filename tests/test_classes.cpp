@@ -134,8 +134,10 @@ struct DefVisitor : nb::def_visitor<DefVisitor> {
   int mem;
 };
 
-DefVisitor dv1 { };
-DefVisitor dv2 { {}, 3 };
+// Default- and aggregate-initialization compile.
+DefVisitor dv1;
+DefVisitor dv2 { };
+DefVisitor dv3 { {}, 1 };
 
 int wrapper_tp_traverse(PyObject *self, visitproc visit, void *arg) {
     // We must traverse the implicit dependency of an object on its associated type object.
