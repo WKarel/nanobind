@@ -125,8 +125,7 @@ NB_MODULE(test_typing_ext, m) {
     );
 
 #if PY_VERSION_HEX >= 0x030B0000
-    m.attr("T5") = nb::type_var_tuple(
-    "T5"
+    m.attr("T5") = nb::type_var_tuple("T5"
 #if PY_VERSION_HEX >= 0x030D0000
       , "default"_a = nb::typing().attr("Unpack")[nb::builtins()["tuple"][nb::make_tuple(nb::type<Foo>(), nb::ellipsis())]]
 #endif
