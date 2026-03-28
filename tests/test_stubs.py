@@ -52,6 +52,38 @@ def test01_check_stub_refs(p_ref, request):
         s_ref.insert(5, "")
         s_ref.insert(6, "from typing_extensions import CapsuleType")
 
+    if "test_typing_ext" in p_in.name and sys.version_info < (3, 13):
+        items = []
+        for idx1, line in enumerate(s_ref):
+            if line == "from typing import (":
+                for idx2, line in enumerate(s_ref[idx1 + 1:], idx1 + 1):
+                    if line == ")":
+                        break
+                    item = line.lstrip().rstrip(",")
+                    if sys.version_info < (3, 11) and item == "TypeVarTuple":
+                        continue
+                    elif item == "Unpack":
+                        continue
+                    items.append(item)
+                break
+        items_v0 = ", ".join(items)
+        items_v0 = f"from typing import {items_v0}"
+        items_v1 = "(\n    " + ",\n    ".join(items) + "\n)"
+        items_v1 = f"from typing import {items_v1}"
+        if len(items_v0) <= 70:
+            s_ref[idx1 : idx2 + 1] = items_v0,
+        else:
+            s_ref[idx1 : idx2 + 1] = items_v1.split('\n')
+        s_ref = [line if line != 'T4 = TypeVar("T4", bound=float, default=int)' else line.replace(", default=int", "")
+                 for line in s_ref]
+        for idx, line in enumerate(s_ref):
+            if line == 'T5 = TypeVarTuple("T5", default=Unpack[tuple[Foo, ...]])':
+                if sys.version_info < (3, 11):
+                    del s_ref[idx : idx + 2]
+                else:
+                    s_ref[idx] = 'T5 = TypeVarTuple("T5")'
+                break
+
     s_in = remove_platform_dependent(s_in)
     s_ref = remove_platform_dependent(s_ref)
 
