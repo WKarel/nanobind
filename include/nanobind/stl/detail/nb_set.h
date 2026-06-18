@@ -24,11 +24,9 @@ template <typename Set, typename Key> struct set_caster {
     bool from_python(handle src, uint8_t flags, cleanup_list *cleanup) noexcept {
         value.clear();
 
-        PyObject* iter = PyObject_GetIter(src.ptr());
-        if (!iter) {
-            PyErr_Clear();
+        PyObject *iter = try_iter(src.ptr());
+        if (!iter)
             return false;
-        }
 
         bool success = true;
         Caster key_caster;
@@ -39,12 +37,14 @@ template <typename Set, typename Key> struct set_caster {
         while ((key = PyIter_Next(iter)) != nullptr) {
             success &= (key_caster.from_python(key, flags, cleanup) &&
                         key_caster.template can_cast<Key>());
-            Py_DECREF(key);
 
-            if (!success)
+            if (!success) {
+                Py_DECREF(key);
                 break;
+            }
 
             value.emplace(key_caster.operator cast_t<Key>());
+            Py_DECREF(key);
         }
 
         if (PyErr_Occurred()) {
