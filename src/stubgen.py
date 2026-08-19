@@ -886,7 +886,7 @@ class StubGen:
                 for el in shapem.group(1).split(','):
                     el = el.strip()
                     if el:
-                        if el == 'None':
+                        if el == '*':
                             dims.append(any)
                         else:
                             try:
