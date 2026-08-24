@@ -632,9 +632,10 @@ class StubGen:
             docstr = tp.__doc__
             tp_dict = dict(tp.__dict__)
 
-            if "__nb_signature__" in tp.__dict__:
+            tp_sig = tp.__dict__.get("__nb_signature__", None)
+            if isinstance(tp_sig, str) and self.is_class_signature(tp_sig):
                 # Types with a custom signature override
-                for s in tp.__nb_signature__.split("\n"):
+                for s in tp_sig.split("\n"):
                     self.write_ln(self.simplify_types(s))
                 self._replace_tail(1, ":\n")
             else:
@@ -677,6 +678,29 @@ class StubGen:
             or issubclass(tp, classmethod)
             or (tp.__module__ == "nanobind" and tp.__name__ in ("nb_func", "nb_method"))
         )
+
+    def is_class_signature(self, sig: str) -> bool:
+        """
+        Test if a signature declares a class. Such a signature has the form
+        ``class Name(...)``, optionally below one or more decorator lines.
+        """
+        return sig.rpartition("\n")[2].startswith("class ")
+
+    def member_signature_override(self, value: object) -> Optional[str]:
+        """
+        Return the stub declaration that a data member provides for itself via
+        a ``__nb_signature__`` string on its type, if any. A ``class ...``
+        string describes the type itself (``nb::sig`` on a class) and does not
+        apply to instances. Generic aliases forward attribute reads to their
+        origin, hence the check on the type.
+        """
+        tp = type(value)
+        if self.is_function(tp) or not hasattr(tp, "__nb_signature__"):
+            return None
+        sig = getattr(value, "__nb_signature__", None)
+        if isinstance(sig, str) and not self.is_class_signature(sig):
+            return sig
+        return None
 
     def put_value(self, value: object, name: str, parent: Optional[object] = None, abbrev: bool = True) -> None:
         """
@@ -734,7 +758,7 @@ class StubGen:
     def is_type_var(self, tp: type) -> bool:
         if issubclass(tp, typing.TypeVar):
             return True
-        if sys.version_info >= (3, 10) and issubclass(tp, typing.ParamSpec):
+        if issubclass(tp, typing.ParamSpec):
             return True
         if sys.version_info >= (3, 11) and issubclass(tp, typing.TypeVarTuple):
             return True
@@ -777,6 +801,9 @@ class StubGen:
            changed to 'collections.abc' on newer Python versions)
         """
 
+        if sys.version_info >= (3, 13):
+            s = s.replace("typing_extensions.CapsuleType", "types.CapsuleType")
+
         # Process nd-array type annotations so that MyPy accepts them
         s = self.ndarray_re.sub(
             lambda m: self._format_ndarray(m.group(1), m.group(2)), s
@@ -814,14 +841,6 @@ class StubGen:
             mod_prefix = self.module.__name__ + "."
             if full_name.startswith(mod_prefix) and \
                     (result := full_name[len(mod_prefix) :]).split(".")[0] in self.module.__dict__:
-                # Inside a class body, also strip the immediate enclosing class
-                # prefix (e.g. "ErrorEnum.Value" -> "Value"). Only that scope
-                # is stripped: class scopes don't nest, so an outer class's
-                # members aren't visible by short name in a nested class body.
-                scope = self.prefix[len(mod_prefix) :]
-                enclosing = scope.rpartition(".")[0]
-                if enclosing and result.startswith(enclosing + "."):
-                    result = result[len(enclosing) + 1 :]
                 return result
             elif mod_name in ("typing", "typing_extensions", "collections.abc"):
                 # Import frequently-occurring typing classes and ABCs directly
@@ -1037,6 +1056,14 @@ class StubGen:
             if name in SKIP_LIST:
                 return
 
+            # Members with a custom signature are emitted verbatim, even if private
+            sig = self.member_signature_override(value)
+            if sig is not None:
+                for line in sig.splitlines():
+                    self.write_ln(line)
+                self.write("\n")
+                return
+
             is_type_alias = typing.get_origin(value) or (
                 isinstance(value, type)
                 and (value.__name__ != name or value.__module__ != self.module.__name__)
@@ -1109,9 +1136,10 @@ class StubGen:
                     return
                 else:
                     self.apply_pattern(self.prefix + ".__prefix__", None)
-                    # using value.__dict__ rather than inspect.getmembers
-                    # to preserve insertion order
-                    for name, child in value.__dict__.items():
+                    # using value.__dict__ rather than inspect.getmembers to
+                    # preserve insertion order. Copy it: emitting a member may
+                    # import a submodule, which binds an attribute here.
+                    for name, child in list(value.__dict__.items()):
                         self.put(child, name=name, parent=value)
                     self.apply_pattern(self.prefix + ".__suffix__", None)
             elif self.is_function(tp):
@@ -1231,7 +1259,7 @@ class StubGen:
             return f'"{e.__forward_arg__}"'
         elif issubclass(tp, enum.Enum):
             return self.type_str(tp) + '.' + e._name_
-        elif (sys.version_info >= (3, 10) and issubclass(tp, typing.ParamSpec)) \
+        elif issubclass(tp, typing.ParamSpec) \
             or (typing_extensions is not None and issubclass(tp, typing_extensions.ParamSpec)):
             tv = self.bind(tp.__module__, "ParamSpec")
             return f'{tv}("{e.__name__}")'

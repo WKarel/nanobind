@@ -184,7 +184,7 @@ sequence.
       .def("set", nb::overload_cast<int>(&Pet::set), "Set the pet's age")
       .def("set", nb::overload_cast<const std::string &>(&Pet::set), "Set the pet's name");
 
-Here, :cpp:func:`nb::overload_cast <overload_cast>` only requires the parameter
+Here, ``nb::overload_cast`` only requires the parameter
 types to be specified, and it deduces the return type.
 
 .. note::
@@ -401,6 +401,46 @@ due to the need to store a weak reference list.
 
    nb::class_<Pet>(m, "Pet", nb::is_weak_referenceable());
 
+.. _frozen_types:
+
+Frozen types
+------------
+
+Python code can normally patch a bound type by adding, replacing, or deleting
+its attributes:
+
+.. code-block:: pycon
+
+   >>> my_ext.Pet.speak = lambda self: print("Woof")
+
+Conclude the binding declarations with :cpp:func:`.freeze() <class_::freeze>`
+to prevent this:
+
+.. code-block:: cpp
+
+   nb::class_<Pet>(m, "Pet")
+       .def(nb::init<>())
+       .def_rw("name", &Pet::name)
+       .freeze();
+
+The type then behaves like a builtin type such as ``int`` or ``str``:
+
+.. code-block:: pycon
+
+   >>> my_ext.Pet.speak = lambda self: print("Woof")
+   TypeError: cannot set 'speak' attribute of immutable type 'my_ext.Pet'
+
+Base classes must be frozen before their subclasses, and violations of this
+rule raise a ``TypeError``. Instances of the type remain writable, and Python
+subclasses of it are still possible. Only the type object itself becomes
+read-only.
+
+Freezing is also an optimization. Python's adaptive specializing interpreter
+can generate faster opcodes for immutable types, which reduces the overhead of
+dispatching a constructor call by 7-10%.
+
+The feature is only enabled on Python 3.15+ and ignored on older versions.
+
 .. _inheriting_in_python:
 
 Extending C++ classes in Python
@@ -561,7 +601,7 @@ to Python.
    #include <nanobind/trampoline.h>
 
    struct PyDog : Dog {
-       NB_TRAMPOLINE(Dog, 1);
+       NB_TRAMPOLINE(Dog);
 
        std::string bark() const override {
            NB_OVERRIDE(bark);
@@ -569,20 +609,8 @@ to Python.
    };
 
 This involves an additional include directive and the line
-:c:macro:`NB_TRAMPOLINE(Dog, 1) <NB_TRAMPOLINE>` to mark the class as a
-trampoline for the ``Dog`` base type. The count (``1``) denotes to the total
-number of virtual method slots that can be overridden within Python.
-
-.. note::
-
-   The number of virtual method slots is used to preallocate memory.
-   Trampoline declarations with an insufficient size may eventually trigger a
-   Python ``RuntimeError`` exception with a descriptive label, e.g.:
-
-   .. code-block:: text
-
-      nanobind::detail::get_trampoline('PyDog::bark()'): the trampoline ran out of
-      slots (you will need to increase the value provided to the NB_TRAMPOLINE() macro)
+:c:macro:`NB_TRAMPOLINE(Dog) <NB_TRAMPOLINE>` to mark the class as a
+trampoline for the ``Dog`` base type.
 
 The macro :c:macro:`NB_OVERRIDE(bark) <NB_OVERRIDE>` intercepts the virtual
 function call, checks if a Python override exists, and forwards the call in
@@ -736,7 +764,7 @@ invoked with incompatible arguments rather than throwing a type error.
 
 When binding *in-place* operators such as ``operator+=``, and when their
 implementation is guaranteed to end with ``return *this``, it is recommended
-that you set a return value policy of :cpp:enumerator:`rv_policy::none`, i.e.,
+that you set a return value policy of :cpp:member:`rv_policy::none`, i.e.,
 
 .. code-block:: cpp
 
@@ -802,7 +830,7 @@ described trampoline:
 
     class Trampoline : public A {
     public:
-        NB_TRAMPOLINE(A, 1);
+        NB_TRAMPOLINE(A);
         int foo() const override { NB_OVERRIDE(foo); }
     };
 
@@ -1087,7 +1115,7 @@ here creates two magic methods on ``Pet``:
 * A ``__new__`` that uses the given function to produce a new ``Pet``.
   It is converted to a Python object in the same way as the return value
   of any other function you might write bindings for. In particular,
-  you can pass a :cpp:enum:`nb::rv_policy <rv_policy>` as an additional
+  you can pass a :cpp:class:`nb::rv_policy <rv_policy>` as an additional
   argument to :cpp:func:`.def() <class_::def>` to control how this conversion
   occurs.
 
@@ -1180,7 +1208,7 @@ current compilation unit).
 .. warning::
 
    Instance class marked with :cpp:class:`nb::never_destruct <never_destruct>`
-   must be returned using the :cpp:enumerator:`reference
+   must be returned using the :cpp:member:`reference
    <rv_policy::reference>` return value policy. Otherwise, nanobind will assume
    ownership, which includes the requirement of destructing the object at
    a later point.

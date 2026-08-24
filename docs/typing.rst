@@ -316,8 +316,8 @@ Any-typed return values
 The return value of a function can sometimes be unclear (dynamic), in which
 case it can be helpful to declare ``typing.Any`` as a pragmatic return type
 (this effectively disables analysis of the return value in static type
-checkers). nanobind provides a :py:class:`nb::any <any>` wrapper type that is
-equivalent to :py:class:`nb::object <object>` except that its type signature
+checkers). nanobind provides a :cpp:class:`nb::any <any>` wrapper type that is
+equivalent to :cpp:class:`nb::object <object>` except that its type signature
 renders as ``typing.Any`` to facilitate this.
 
 .. _stubs:
@@ -539,8 +539,9 @@ The program has the following command line options:
 
 .. code-block:: text
 
-   usage: python -m nanobind.stubgen [-h] [-o FILE] [-O PATH] [-i PATH] [-m MODULE]
-                                     [-r] [-M FILE] [-P] [-D] [--exclude-values] [-q]
+   usage: python -m nanobind.stubgen [-h] [-o FILE] [-O PATH] [-i PATH]
+                                     [-m MODULE] [-r] [-M FILE] [-p FILE] [-P]
+                                     [-D] [--exclude-values] [-q]
 
    Generate stubs for nanobind-based extensions.
 
@@ -759,3 +760,30 @@ accepts a comma-separated list of modules, with an optional ``as`` alias:
 You may also add free-form text the beginning or the end of the generated stub
 module or of a class. To do so, add an entry that matches on ``name.__prefix__``
 or ``name.__suffix__`` where ``name`` is the name of the module or class.
+
+.. _stubgen_member_sig:
+
+Per-member signature overrides
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+``stubgen`` renders data members by inspecting their runtime value. A value
+can instead dictate its own stub declaration by exposing a ``__nb_signature__``
+string on its *type*, which ``stubgen`` emits verbatim in place of the usual
+``name: type = value`` line. This is the data analogue of :cpp:class:`nb::sig
+<sig>`.
+
+.. code-block:: python
+
+   class _ConfigTable:
+       @property
+       def __nb_signature__(self):
+           return f"config: Config[{self.args}]"
+
+   config = _ConfigTable()
+
+The generated stub then reads ``config: Config[...]`` rather than ``config:
+_ConfigTable = ...``. The string may span several lines. Providing one also
+includes an otherwise private member in the stub, while ``stubgen`` continues
+to skip the private ``_ConfigTable`` class itself. The string is not processed
+further, so it must only reference names that the stub already imports (e.g.
+via a pattern file).
