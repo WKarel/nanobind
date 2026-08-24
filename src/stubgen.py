@@ -640,7 +640,10 @@ class StubGen:
                 self._replace_tail(1, ":\n")
             else:
                 self.write_ln(f"class {tp_name}:")
-                bases: Tuple[Any, ...] = getattr(tp, "__orig_bases__", tp.__bases__)
+                # wk ignore __orig_bases__ defined only on a base class.
+                # bases: Tuple[Any, ...] = getattr(tp, "__orig_bases__", tp.__bases__)
+                bases: Tuple[Any, ...] = tp.__dict__.get('__orig_bases__', tp.__bases__)
+                # wk end
                 tp_bases = [self.type_str(base) for base in bases]
 
                 if tp_bases != ["object"]:
@@ -879,7 +882,7 @@ class StubGen:
             result = self.bind(module, attr)
         elif is_numpy:
             if m:
-                # wk Leave single-character type parameters unchanged.
+                # wk Leave single-character dtype unchanged, as it may be a type parameter.
                 # dtype = "numpy." + m.group(1)
                 dtype = m.group(1)
                 if len(dtype) > 1:
@@ -902,7 +905,7 @@ class StubGen:
                 for el in shapem.group(1).split(','):
                     el = el.strip()
                     if el:
-                        if el == 'None':
+                        if el == '*':
                             dims.append(any)
                         else:
                             try:
