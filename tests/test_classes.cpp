@@ -112,6 +112,9 @@ struct Pooled {
     int get() const { return value; }
 };
 
+// Number of payloads released by the nb::keep_alive_cb() test
+static std::atomic<int> keep_alive_cb_deleted{0};
+
 // Like 'Pooled', but bound as a GC type (dynamic_attr + weak-referenceable).
 static std::atomic<int> pooled_gc_constructed{0}, pooled_gc_destructed{0};
 
@@ -612,6 +615,22 @@ NB_MODULE(test_classes_ext, m) {
         "keep_alive_ret", [](nb::handle, nb::handle ret) { return ret; },
         nb::keep_alive<1, 0>());
 
+    // test16b_inst_python_derived
+    m.def("inst_python_derived",
+          [](nb::handle h) { return nb::inst_python_derived(h); });
+
+    // test16c_keep_alive_functions
+    m.def("keep_alive_obj", [](nb::handle nurse, nb::handle patient) {
+        nb::keep_alive_obj(nurse, patient);
+    }, nb::arg("nurse").none(), nb::arg("patient").none());
+    m.def("keep_alive_cb", [](nb::handle nurse) {
+        nb::keep_alive_cb(nurse, new int(0), [](void *p) noexcept {
+            delete (int *) p;
+            keep_alive_cb_deleted++;
+        });
+    });
+    m.def("keep_alive_cb_deleted", [] { return keep_alive_cb_deleted.load(); });
+
     // test17_name_qualname_module()
     m.def("f", []{});
     struct MyClass { struct NestedClass { }; struct Sibling { }; };
@@ -911,10 +930,11 @@ NB_MODULE(test_classes_ext, m) {
         .def("polymorphic", &BoundDerived::polymorphic);
 
     nb::class_<UniqueInt>(m, "UniqueInt")
-        .def(nb::new_(&UniqueInt::make))
+        .def(nb::new_(&UniqueInt::make),
+             nb::sig("def __new__(cls, value: int, /) -> UniqueInt"))
         .def(nb::new_([](std::string s) {
             return UniqueInt::make(std::atoi(s.c_str()));
-        }), "s"_a)
+        }), "s"_a, nb::sig("def __new__(cls, s: str) -> UniqueInt"))
         .def("value", &UniqueInt::value)
         .def("lookups", &UniqueInt::lookups);
 
