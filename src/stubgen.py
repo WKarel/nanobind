@@ -1397,7 +1397,9 @@ class StubGen:
 
         if isinstance(tp, str):
             result = tp
-        elif isinstance(tp, typing.TypeVar):
+        # wk begin
+        elif isinstance(tp, (typing.TypeVar, typing.TypeVarTuple)):
+            # wk end
             return tp.__name__
         elif isinstance(tp, typing.ForwardRef):
             return repr(tp.__forward_arg__)
